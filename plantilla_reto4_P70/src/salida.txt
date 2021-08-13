@@ -1,0 +1,412 @@
+import java.util.ArrayList;
+import java.io.File;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+
+//VISTA.
+public class VistaRequerimientosReto4 {
+    
+    public static final ControladorRequerimientosReto4 controlador = new ControladorRequerimientosReto4();
+
+    public static void asesorPorCiudad(){
+    
+        System.out.println("*** Asesor por Ciudad ***");
+        try{
+            ArrayList<AsesorPorCiudad> rankingAsesorPorCiudad = controlador.consultarAsesorPorCiudad();
+            for(AsesorPorCiudad asesorPorCiudad : rankingAsesorPorCiudad){
+                System.out.printf("El asesor con Id %d se llama %s %s y reside en %s %n", 
+                    asesorPorCiudad.getID_Lider(),
+                    asesorPorCiudad.getNombre(),
+                    asesorPorCiudad.getPrimer_Apellido(),
+                    asesorPorCiudad.getCiudad_Residencia()
+                );
+            }
+
+        }catch(SQLException e){
+            System.err.println("Ha ocurrido un error!"+e.getMessage());
+        }
+    }
+
+    public static void compraPorProveedor(){     
+
+        System.out.println("*** Compras por Proveedor ***");
+        try{
+            ArrayList<CompraPorProveedor> rankingCompraPorProveedor = controlador.consultarCompraPorProveedor();
+            for(CompraPorProveedor compraPorProveedor : rankingCompraPorProveedor){
+                System.out.printf("La compra %d del proveedor %s para la construtora %s del banco %s ubicado en %s %n", 
+                    compraPorProveedor.getId_Compra(),
+                    compraPorProveedor.getProveedor(),
+                    compraPorProveedor.getConstructora(),
+                    compraPorProveedor.getBanco_Vinculado(),
+                    compraPorProveedor.getCiudad()
+                );
+            }
+
+        }catch(SQLException e){
+            System.err.println(e);
+        }
+    }
+
+    public static void proyectosCasaCampestre(){
+
+        System.out.println("*** Proyectos Casa Campestre ***");
+        try{
+            ArrayList<ProyectoCasaCampestre> rankingProyectoCasaCampestre = controlador.consultarProyectoCasaCampestre();
+            for(ProyectoCasaCampestre proyectoCasaCampestre : rankingProyectoCasaCampestre){
+                System.out.printf("El proyecto con ID %d de la constructora: %s tiene %.0f habitaciones y esta ubicado en %s %n", 
+                proyectoCasaCampestre.getID_Proyecto(),
+                proyectoCasaCampestre.getConstructora(),
+                proyectoCasaCampestre.getNumero_Habitaciones(),
+                proyectoCasaCampestre.getCiudad()
+                );
+            }
+
+        }catch(SQLException e){
+            System.err.println(e);
+        }
+    }
+
+}
+
+// CONTROLADOR.
+public class ControladorRequerimientosReto4 {       
+    public final AsesorPorCiudadDao asesorPorCiudadDao;
+    public final CompraPorProveedorDao compraPorProveedorDao;
+    public final ProyectoCasaCampestreDao proyectoCasaCampestreDao;
+    
+    public ControladorRequerimientosReto4(){
+        this.asesorPorCiudadDao = new AsesorPorCiudadDao();
+        this.compraPorProveedorDao = new CompraPorProveedorDao();
+        this.proyectoCasaCampestreDao = new ProyectoCasaCampestreDao();
+
+    }
+
+    public ArrayList<AsesorPorCiudad> consultarAsesorPorCiudad() throws SQLException {
+        return asesorPorCiudadDao.rankingAsesorPorCiudad();
+    }
+    
+    public ArrayList<CompraPorProveedor> consultarCompraPorProveedor() throws SQLException {
+        return compraPorProveedorDao.rankingCompraPorProveedor();
+    }
+
+    public ArrayList<ProyectoCasaCampestre> consultarProyectoCasaCampestre() throws SQLException {
+        return proyectoCasaCampestreDao.rankingProyectoCasaCampestre();
+    }
+
+}
+
+// DAO...
+public class AsesorPorCiudadDao {
+    
+    public ArrayList<AsesorPorCiudad> rankingAsesorPorCiudad() throws SQLException {
+
+        ArrayList<AsesorPorCiudad> respuesta = new ArrayList<AsesorPorCiudad>();
+        Connection conexion = JDBCUtilities.getConnection();
+
+        try{ 
+            String consulta =   "SELECT ID_Lider, Nombre, Primer_Apellido, Ciudad_Residencia " + 
+                                "FROM lider WHERE Cargo = 'Asesor' " + 
+                                "ORDER by Ciudad_Residencia ASC";
+
+
+            PreparedStatement statement = conexion.prepareStatement(consulta);
+            ResultSet resultSet = statement.executeQuery();
+
+            //Recorrer los registros en los VO específicos
+            while(resultSet.next()){
+                AsesorPorCiudad pasesores = new AsesorPorCiudad();
+                pasesores.setID_Lider(resultSet.getInt("ID_Lider"));
+                pasesores.setNombre(resultSet.getString("Nombre"));
+                pasesores.setPrimer_Apellido(resultSet.getString("Primer_Apellido"));
+                pasesores.setCiudad_Residencia(resultSet.getString("Ciudad_Residencia"));
+
+                //Se agrega cada registro como un objeto del ArrayList que contiene la consulta
+                respuesta.add(pasesores);
+            }
+
+            resultSet.close();
+            statement.close();
+
+        }catch(SQLException e){
+            System.err.println("Error consultando los proyectos de tipo Apartaestudio en Quibdo: "+e);
+        }finally{
+            if(conexion != null){
+                conexion.close();
+            }
+        }
+
+        //Retornar la colección de vo's
+        return respuesta;
+    }
+    
+}
+
+public class CompraPorProveedorDao {
+   
+    public ArrayList<CompraPorProveedor> rankingCompraPorProveedor() throws SQLException {
+        ArrayList<CompraPorProveedor> respuesta = new ArrayList<CompraPorProveedor>();
+        Connection conexion = JDBCUtilities.getConnection();
+
+        try{ 
+            String consulta =   "SELECT Id_Compra, Proveedor, Constructora, Banco_Vinculado,  Ciudad FROM Compra c INNER JOIN Proyecto p ON  c.ID_Proyecto = p.ID_Proyecto WHERE Ciudad = 'Salento' AND Proveedor = 'Homecenter'";
+
+
+            PreparedStatement statement = conexion.prepareStatement(consulta);
+            ResultSet resultSet = statement.executeQuery();
+
+            //Recorrer los registros en los VO específicos
+            while(resultSet.next()){
+                CompraPorProveedor compraPorProveedor = new CompraPorProveedor();
+                    compraPorProveedor.setId_Compra(resultSet.getInt("ID_Compra"));
+                    compraPorProveedor.setProveedor(resultSet.getString("Proveedor"));
+                    compraPorProveedor.setConstructora(resultSet.getString("Constructora"));
+                    compraPorProveedor.setBanco_Vinculado(resultSet.getString("Banco_Vinculado"));
+                    compraPorProveedor.setCiudad(resultSet.getString("Ciudad"));
+
+                //Se agrega cada registro como un objeto del ArrayList que contiene la consulta
+                respuesta.add(compraPorProveedor);
+            }
+
+            resultSet.close();
+            statement.close();
+
+        }catch(SQLException e){
+            System.err.println("Error consultando los proyectos de tipo Apartaestudio en Quibdo: "+e);
+        }finally{
+            if(conexion != null){
+                conexion.close();
+            }
+        }
+
+        return respuesta;
+    }
+        
+}
+
+public class ProyectoCasaCampestreDao {
+    //Obtener los proyectos por Tipo en la ciudad de Salento
+    public ArrayList<ProyectoCasaCampestre> rankingProyectoCasaCampestre() throws SQLException {
+
+        ArrayList<ProyectoCasaCampestre> respuesta = new ArrayList<ProyectoCasaCampestre>();
+        Connection conexion = JDBCUtilities.getConnection();
+
+        try{       
+
+            String consulta =   "SELECT ID_Proyecto, Constructora, Numero_Habitaciones, Ciudad FROM Proyecto WHERE Clasificacion = 'Casa Campestre' AND Ciudad IN ('Santa Marta', 'Cartagena', 'Barranquilla')";
+
+
+            PreparedStatement statement = conexion.prepareStatement(consulta);
+            ResultSet resultSet = statement.executeQuery();
+
+            //Recorrer los registros en los VO específicos
+            while(resultSet.next()){
+                ProyectoCasaCampestre proyectoCasaCampestre = new ProyectoCasaCampestre();
+                proyectoCasaCampestre.setID_Proyecto(resultSet.getInt("ID_Proyecto"));
+                proyectoCasaCampestre.setConstructora(resultSet.getString("Constructora"));
+                proyectoCasaCampestre.setNumero_Habitaciones(resultSet.getDouble("Numero_Habitaciones"));
+                proyectoCasaCampestre.setCiudad(resultSet.getString("Ciudad"));
+
+                //Se agrega cada registro como un objeto del ArrayList que contiene la consulta
+                respuesta.add(proyectoCasaCampestre);
+            }
+
+            resultSet.close();
+            statement.close();
+
+        }catch(SQLException e){
+            System.err.println("Error consultando los proyectos de tipo Apartaestudio en Quibdo: "+e);
+        }finally{
+            if(conexion != null){
+                conexion.close();
+            }
+        }
+
+        //Retornar la colección de vo's
+        return respuesta;
+    }     
+}
+
+// VO.
+public class AsesorPorCiudad {
+    
+    private Integer ID_Lider;
+    private String Nombre;
+    private String Primer_Apellido;
+    private String Ciudad_Residencia;
+    
+    public AsesorPorCiudad() {
+    }
+
+    public AsesorPorCiudad(Integer iD_Lider, String nombre, String primer_Apellido, String ciudad_Residencia) {
+        ID_Lider = iD_Lider;
+        Nombre = nombre;
+        Primer_Apellido = primer_Apellido;
+        Ciudad_Residencia = ciudad_Residencia;
+    }
+
+    public Integer getID_Lider() {
+        return ID_Lider;
+    }
+
+    public void setID_Lider(Integer iD_Lider) {
+        ID_Lider = iD_Lider;
+    }
+
+    public String getNombre() {
+        return Nombre;
+    }
+
+    public void setNombre(String nombre) {
+        Nombre = nombre;
+    }
+
+    public String getPrimer_Apellido() {
+        return Primer_Apellido;
+    }
+
+    public void setPrimer_Apellido(String primer_Apellido) {
+        Primer_Apellido = primer_Apellido;
+    }
+
+    public String getCiudad_Residencia() {
+        return Ciudad_Residencia;
+    }
+
+    public void setCiudad_Residencia(String ciudad_Residencia) {
+        Ciudad_Residencia = ciudad_Residencia;
+    }
+    
+}
+
+public class CompraPorProveedor {
+    private Integer Id_Compra;
+    private String Proveedor;
+    private String Constructora;
+    private String Banco_Vinculado;
+    private String Ciudad;
+    
+    public CompraPorProveedor() {
+    }
+
+    public CompraPorProveedor(Integer id_Compra, String proveedor, String constructora, String banco_Vinculado,
+            String ciudad) {
+        Id_Compra = id_Compra;
+        Proveedor = proveedor;
+        Constructora = constructora;
+        Banco_Vinculado = banco_Vinculado;
+        Ciudad = ciudad;
+    }
+
+    public Integer getId_Compra() {
+        return Id_Compra;
+    }
+
+    public void setId_Compra(Integer id_Compra) {
+        Id_Compra = id_Compra;
+    }
+
+    public String getProveedor() {
+        return Proveedor;
+    }
+
+    public void setProveedor(String proveedor) {
+        Proveedor = proveedor;
+    }
+
+    public String getConstructora() {
+        return Constructora;
+    }
+
+    public void setConstructora(String constructora) {
+        Constructora = constructora;
+    }
+
+    public String getBanco_Vinculado() {
+        return Banco_Vinculado;
+    }
+
+    public void setBanco_Vinculado(String banco_Vinculado) {
+        Banco_Vinculado = banco_Vinculado;
+    }
+
+    public String getCiudad() {
+        return Ciudad;
+    }
+
+    public void setCiudad(String ciudad) {
+        Ciudad = ciudad;
+    }
+    
+}
+
+public class ProyectoCasaCampestre {
+    private Integer ID_Proyecto;
+    private String Constructora;
+    private Double Numero_Habitaciones;
+    private String Ciudad;
+    
+    public ProyectoCasaCampestre() {
+    }
+
+    public ProyectoCasaCampestre(Integer iD_Proyecto, String constructora, Double numero_Habitaciones, String ciudad) {
+        ID_Proyecto = iD_Proyecto;
+        Constructora = constructora;
+        Numero_Habitaciones = numero_Habitaciones;
+        Ciudad = ciudad;
+    }
+
+    public Integer getID_Proyecto() {
+        return ID_Proyecto;
+    }
+
+    public void setID_Proyecto(Integer iD_Proyecto) {
+        ID_Proyecto = iD_Proyecto;
+    }
+
+    public String getConstructora() {
+        return Constructora;
+    }
+
+    public void setConstructora(String constructora) {
+        Constructora = constructora;
+    }
+
+    public Double getNumero_Habitaciones() {
+        return Numero_Habitaciones;
+    }
+
+    public void setNumero_Habitaciones(Double numero_Habitaciones) {
+        Numero_Habitaciones = numero_Habitaciones;
+    }
+
+    public String getCiudad() {
+        return Ciudad;
+    }
+
+    public void setCiudad(String ciudad) {
+        Ciudad = ciudad;
+    }
+    
+}
+
+// JDBC.
+public class JDBCUtilities {
+
+    //Atributos de clase para gestión de conexión con la base de datos    
+    private static final String UBICACION_BD = "ProyectosConstruccion.db";    
+
+    public static Connection getConnection() throws SQLException {
+        String url = "jdbc:sqlite:" + UBICACION_BD;        
+        return DriverManager.getConnection(url);
+    }
+
+    public static boolean estaVacia(){
+        File archivo = new File(JDBCUtilities.UBICACION_BD);
+        return archivo.length() == 0;
+    }
+}
+
+
